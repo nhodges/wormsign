@@ -1,0 +1,67 @@
+{% extends "layout.html" %}
+{% block title %}{{ run.name }}{% endblock %}
+{% block main %}
+<p class="crumb"><a href="{{ url_for('run_list') }}">Runs</a> / {{ run.name }}</p>
+<h1>{{ run.name }}
+  {% if run.has_error %}<span class="badge err">error</span>{% else %}<span class="badge ok">ok</span>{% endif %}
+</h1>
+{% if run.task %}<p class="task-line">{{ run.task }}</p>{% endif %}
+
+<dl class="stats">
+  <div><dt>Duration</dt><dd>{{ run.duration_ms | duration }}</dd></div>
+  <div><dt>Steps</dt><dd>{{ steps | length }}</dd></div>
+  <div><dt>Tokens in</dt><dd>{{ "{:,}".format(run.input_tokens) }}</dd></div>
+  <div><dt>Tokens out</dt><dd>{{ "{:,}".format(run.output_tokens) }}</dd></div>
+  <div><dt>Tool calls</dt><dd>{{ run.tool_call_count }}</dd></div>
+</dl>
+
+<section class="cost">
+  <h2>Tokens by step</h2>
+  <p class="legend"><span class="key in"></span>input <span class="key out"></span>output.
+    Input tokens usually grow with each step, because the model reads the full history again.</p>
+  {% for step in steps %}
+  <a class="cost-row{% if step.is_largest %} largest{% endif %}" href="#step-{{ step.index + 1 }}">
+    <span class="cost-label">Step {{ step.index + 1 }}{% if step.tool_names %} · {{ step.tool_names | join(", ") }}{% endif %}</span>
+    <span class="cost-track"><span class="seg in" style="width: {{ '%.2f' % step.in_width }}%"></span><span class="seg out" style="width: {{ '%.2f' % step.out_width }}%"></span></span>
+    <span class="cost-num">{{ "{:,}".format(step.input_tokens + step.output_tokens) }}</span>
+    <span class="cost-share">{{ '%.0f' % step.share }}%{% if step.is_largest %} <span class="badge warn">largest</span>{% endif %}</span>
+  </a>
+  {% endfor %}
+</section>
+
+<h2>Timeline</h2>
+<ol class="steps">
+  {% for step in steps %}
+  <li class="step{% if step.has_error %} has-error{% endif %}" id="step-{{ step.index + 1 }}">
+    <div class="step-head">
+      <span class="step-no">Step {{ step.index + 1 }}</span>
+      <span class="step-meta">{{ step.duration_ms | duration }} ·
+        {{ "{:,}".format(step.input_tokens) }} in / {{ "{:,}".format(step.output_tokens) }} out</span>
+    </div>
+    {% for span in step.spans %}
+    <details class="span {{ span.kind }}{% if span.status_code == 2 %} error{% endif %}">
+      <summary>
+        <span class="label">
+          {% if span.kind == "chat" %}model · {{ span.model or "unknown" }}
+          {% elif span.kind == "execute_tool" %}tool · {{ span.tool_name or "unknown" }}
+          {% else %}other{% endif %}
+          {% if span.error_type %}<span class="badge err">{{ span.error_type }}</span>{% endif %}
+        </span>
+        <span class="track"><span class="bar" style="left: {{ '%.2f' % span.left }}%; width: {{ '%.2f' % span.width }}%"></span></span>
+        <span class="dur">{{ span.duration_ms | duration }}</span>
+      </summary>
+      <div class="detail">
+        {% if span.kind == "chat" %}
+        <p>{{ "{:,}".format(span.input_tokens or 0) }} tokens in, {{ "{:,}".format(span.output_tokens or 0) }} tokens out.
+           Finish: {{ span.finish_reasons or "—" }}</p>
+        {% endif %}
+        {% if span.tool_arguments %}<h4>Arguments</h4><pre>{{ span.tool_arguments | pretty }}</pre>{% endif %}
+        {% if span.kind == "execute_tool" %}<h4>Result</h4><pre>{{ span.tool_result or "(empty)" }}</pre>{% endif %}
+        <h4>All attributes</h4><pre>{{ span.attributes | pretty }}</pre>
+      </div>
+    </details>
+    {% endfor %}
+  </li>
+  {% endfor %}
+</ol>
+{% endblock %}

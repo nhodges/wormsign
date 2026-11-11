@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+{% block main %}
+<h1>Runs</h1>
+{% if not runs %}
+<p class="empty">No runs yet. Load some: <code>python ingest.py traces.db sample_logs/*.jsonl</code></p>
+{% else %}
+<form action="{{ url_for('diff_view') }}" method="get" id="compare">
+<table class="runs">
+  <thead>
+    <tr><th></th><th>Run</th><th>Task</th><th class="num">Duration</th><th class="num">Tokens in</th>
+        <th class="num">Tokens out</th><th class="num">Tool calls</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    {% for run in runs %}
+    <tr>
+      <td><input type="checkbox" name="run" value="{{ run.id }}" aria-label="Select {{ run.name }}"></td>
+      <td><a href="{{ url_for('timeline', run_id=run.id) }}">{{ run.name }}</a></td>
+      <td class="task">{{ run.task or "—" }}</td>
+      <td class="num">{{ run.duration_ms | duration }}</td>
+      <td class="num">{{ "{:,}".format(run.input_tokens) }}</td>
+      <td class="num">{{ "{:,}".format(run.output_tokens) }}</td>
+      <td class="num">{{ run.tool_call_count }}</td>
+      <td>{% if run.has_error %}<span class="badge err">error</span>{% else %}<span class="badge ok">ok</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="compare-bar"><button type="submit" id="compare-btn">Compare 2 runs</button>
+  <span id="compare-hint">Select two runs.</span></p>
+</form>
+<script src="{{ url_for('static', filename='compare.js') }}"></script>
+{% endif %}
+{% endblock %}

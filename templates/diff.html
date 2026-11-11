@@ -1,0 +1,59 @@
+{% extends "layout.html" %}
+{% block title %}{{ a.name }} vs {{ b.name }}{% endblock %}
+{% macro delta(x, y) %}{% set d = y - x %}{% if d %}<span class="delta">{{ "{:+,}".format(d) }}</span>{% endif %}{% endmacro %}
+{% macro cell(step) %}
+  {% if step is none %}<div class="cell gap">no step</div>
+  {% else %}
+  <div class="cell{% if step.has_error %} error{% endif %}">
+    <div class="cell-head"><span class="step-no">Step {{ step.index + 1 }}</span>
+      <span class="step-meta">{{ step.duration_ms | duration }} · {{ "{:,}".format(step.input_tokens) }} in / {{ "{:,}".format(step.output_tokens) }} out</span></div>
+    {% for tool in step.tools %}
+    <div class="tool"><span class="tool-name">{{ tool.name }}</span>
+      {% if tool.error_type %}<span class="badge err">{{ tool.error_type }}</span>{% endif %}
+      {% if tool.arguments %}<code>{{ tool.arguments }}</code>{% endif %}</div>
+    {% else %}<div class="tool muted">model answer, no tool call</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endmacro %}
+{% block main %}
+<p class="crumb"><a href="{{ url_for('run_list') }}">Runs</a> / Compare</p>
+<h1>{{ a.name }} <span class="vs">vs</span> {{ b.name }}</h1>
+{% if tasks_differ %}
+<p class="warning"><strong>These runs have different tasks.</strong>
+  Matching rows can be a coincidence: steps with no tool call always match.</p>
+{% endif %}
+<p class="verdict">
+  {% if result.diverged_at is none %}The two runs took the same actions in all {{ total }} steps.
+  {% else %}The runs diverge at <strong>step {{ result.diverged_at + 1 }}</strong>.
+  {{ same_count }} of {{ total }} aligned rows match.{% endif %}
+</p>
+
+<div class="diff">
+  <div class="diff-head">
+    <a href="{{ url_for('timeline', run_id=a.id) }}">{{ a.name }}</a>
+    <span>{{ a.duration_ms | duration }} · {{ "{:,}".format(a.input_tokens + a.output_tokens) }} tokens · {{ a.tool_call_count }} tool calls</span>
+  </div>
+  <div></div>
+  <div class="diff-head">
+    <a href="{{ url_for('timeline', run_id=b.id) }}">{{ b.name }}</a>
+    <span>{{ b.duration_ms | duration }} · {{ "{:,}".format(b.input_tokens + b.output_tokens) }} tokens
+      {{ delta(a.input_tokens + a.output_tokens, b.input_tokens + b.output_tokens) }} · {{ b.tool_call_count }} tool calls</span>
+  </div>
+
+  {% set ns = namespace(marked=false) %}
+  {% for row in result.rows %}
+    {% if not row.same and not ns.marked %}
+      {% set ns.marked = true %}
+      <div class="diverge">Runs diverge here</div>
+    {% endif %}
+    <div class="side {{ 'same' if row.same else 'changed' }}">{{ cell(row.a) }}</div>
+    <div class="mark {{ 'same' if row.same else 'changed' }}"
+         title="{{ 'same action' if row.same else 'different action' }}">{{ "=" if row.same else "≠" }}
+      {% if row.outcome_differs %}<span class="badge err" title="Same action, but only one side failed">outcome</span>{% endif %}</div>
+    <div class="side {{ 'same' if row.same else 'changed' }}">{{ cell(row.b) }}</div>
+  {% endfor %}
+</div>
+<p class="legend">Two steps match when they make the same tool calls with the same arguments, in the same order.
+  Tokens and durations are not compared.</p>
+{% endblock %}
