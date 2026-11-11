@@ -1,8 +1,10 @@
 """Diff two runs step by step: which tool calls match, and where they diverge.
 
-AI citation: drafted with Claude (Anthropic); the three diff decisions
-(sameness = tool names + arguments, LCS re-alignment, None padding) chosen
-by Nuri.
+AI citation: first version drafted with Claude (Anthropic). Nuri chose the
+three diff decisions (sameness = tool names + arguments, LCS re-alignment,
+None padding), rewrote the alignment as _match_pairs and _build_rows, and
+fixed its recursion limit. Claude reviewed the changes and added the
+long-run test.
 
 A step's identity is what the agent did: its tool calls, as (name, arguments)
 pairs, in order. Tokens and durations never match between two runs, so they
