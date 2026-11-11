@@ -1,6 +1,6 @@
 # Wormsign
 
-#### Video Demo: (add URL after recording)
+#### Video Demo: <https://youtu.be/kecg8r798Zo>
 
 #### Description:
 
@@ -12,8 +12,10 @@ agents: it loads OTLP/JSON traces of agent runs into SQLite and shows a run
 list, a per-run timeline with a token cost view, and a step-by-step diff of
 two runs.
 
-AI citation: schema, ingest, routes, and diff drafted with Claude (Anthropic);
-design decisions reviewed and chosen by Nuri.
+AI citation: schema, ingest, and routes drafted with Claude (Anthropic), and
+also the first version of the diff. Nuri chose the design decisions and
+rewrote the diff alignment in `diff.py`. Each file states its own AI use in a
+comment at the top.
 
 ```bash
 pip install -r requirements.txt
